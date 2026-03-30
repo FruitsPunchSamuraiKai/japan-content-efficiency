@@ -107,21 +107,19 @@ with tab1:
     # Content type overview chart
     st.subheader("Content Type Overview")
 
-    fig_overview = px.scatter(
-        df_summary,
-        x="avg_efficiency",
-        y="avg_export_value",
-        size="total_viewing_hours_M",
-        color="content_type",
-        color_discrete_map=TYPE_COLORS,
-        text=df_summary["content_type"].map(TYPE_LABELS),
-        labels={
-            "avg_efficiency": "Viewing Efficiency Index (avg)",
-            "avg_export_value": "Export Value (1=Low, 3=High)",
-            "total_viewing_hours_M": "Total Viewing Hours (M)",
-        },
-    )
-    fig_overview.update_traces(textposition="top center", textfont_size=12)
+    fig_overview = go.Figure()
+    for _, row in df_summary.iterrows():
+        ctype = row["content_type"]
+        fig_overview.add_trace(go.Scatter(
+            x=[row["avg_efficiency"]],
+            y=[row["avg_export_value"]],
+            mode="markers+text",
+            name=TYPE_LABELS[ctype],
+            marker=dict(color=TYPE_COLORS[ctype], size=max(12, row["total_viewing_hours_M"] / 15)),
+            text=[TYPE_LABELS[ctype]],
+            textposition="top center",
+            textfont=dict(size=12),
+        ))
     fig_overview.update_layout(
         height=420,
         showlegend=False,
@@ -175,24 +173,22 @@ with tab2:
     st.subheader("Title-Level Efficiency Matrix")
     st.markdown("Each point is a title. Position shows cost proxy vs viewing hours.")
 
-    df_titles["_marker_size"] = 15
-    fig_titles = px.scatter(
-        df_titles,
-        x="cost_proxy_M",
-        y="viewing_hours_M",
-        color="content_type",
-        color_discrete_map=TYPE_COLORS,
-        text="title",
-        size="_marker_size",
-        size_max=15,
-        labels={
-            "cost_proxy_M": "Cost Proxy ($M)",
-            "viewing_hours_M": "Viewing Hours (M)",
-            "content_type": "Content Type",
-        },
-    )
-    fig_titles.update_traces(textposition="top right", textfont_size=9)
+    fig_titles = go.Figure()
+    for ctype in ["anime", "drama", "film", "reality"]:
+        subset = df_titles[df_titles["content_type"] == ctype]
+        fig_titles.add_trace(go.Scatter(
+            x=subset["cost_proxy_M"],
+            y=subset["viewing_hours_M"],
+            mode="markers+text",
+            name=TYPE_LABELS[ctype],
+            marker=dict(color=TYPE_COLORS[ctype], size=12),
+            text=subset["title"],
+            textposition="top right",
+            textfont=dict(size=9),
+        ))
     fig_titles.update_layout(
+        xaxis_title="Cost Proxy ($M)",
+        yaxis_title="Viewing Hours (M)",
         height=500,
         legend=dict(orientation="h", y=1.1),
     )
@@ -283,19 +279,19 @@ with tab3:
     # Domestic vs Export quadrant
     st.subheader("Content Positioning: Efficiency × Export Value")
 
-    fig_quad = px.scatter(
-        df_titles,
-        x="viewing_efficiency",
-        y="export_value_numeric",
-        color="content_type",
-        color_discrete_map=TYPE_COLORS,
-        text="title",
-        labels={
-            "viewing_efficiency": "Viewing Efficiency Index",
-            "export_value_numeric": "Export Value (1=Low, 3=High)",
-        },
-    )
-    fig_quad.update_traces(textposition="top right", textfont_size=9)
+    fig_quad = go.Figure()
+    for ctype in ["anime", "drama", "film", "reality"]:
+        subset = df_titles[df_titles["content_type"] == ctype]
+        fig_quad.add_trace(go.Scatter(
+            x=subset["viewing_efficiency"],
+            y=subset["export_value_numeric"],
+            mode="markers+text",
+            name=TYPE_LABELS[ctype],
+            marker=dict(color=TYPE_COLORS[ctype], size=12),
+            text=subset["title"],
+            textposition="top right",
+            textfont=dict(size=9),
+        ))
 
     # Add quadrant lines
     median_eff = df_titles["viewing_efficiency"].median()
