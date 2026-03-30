@@ -85,3 +85,8 @@ the market context: what competitive pressures exist in Japan and Korea, and
 why APAC markets require locally adjusted analysis frameworks.
 
 Together: **competitive landscape → content investment framework → strategic implications.**
+
+## 10. Supplementary Notes
+
+- **[Japan Content Economics Note](docs/japan_content_economics_note.md)** — Context on windowing, licensing, and production committee structures that shape content economics in Japan
+- **[Anime Licensing Valuation Framework](https://github.com/FruitsPunchSamuraiKai/valuation-memo)** — Scenario-based breakeven analysis for exclusive vs. delayed vs. library licensing
