@@ -1,7 +1,7 @@
 # Japan Content Investment Efficiency & Export Value Framework
 
 *Part of a two-project analytical series. The companion project
-([APAC Streaming Competitive Intelligence](../apac-streaming-ci/README.md))
+([APAC Streaming Competitive Intelligence](https://github.com/FruitsPunchSamuraiKai/apac-streaming-ci))
 maps the competitive environment; this project provides a framework for
 content investment discussion within that environment.*
 
