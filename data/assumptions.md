@@ -1,68 +1,87 @@
 # Data Assumptions & Metric Definitions
 
+## Sample Scope
+
+**"Japanese content"** is defined as titles meeting ALL of:
+1. Primary production country is Japan
+2. Primary language is Japanese
+3. Appeared in Netflix public engagement data
+
+Excluded: Non-Japanese titles popular in Japan, co-productions where Japan
+is not the primary origin.
+
+**Current sample:** 21 titles across 4 content types (Anime 7, Drama 6, Film 3, Reality 5).
+
 ## Data Currency
 
 - **Latest Netflix Engagement Report:** Published January 20, 2026
 - **Coverage window:** July–December 2025
-- **Analysis range:** Uses data from 2023 H2 through 2025 H2 where available
+- **Analysis range:** 2023 H1 through 2025 H2
 
 ## Cost Proxy Methodology
 
-We use **category-level cost bands** based on publicly available industry benchmarks
-and press reporting. These are NOT title-level budgets.
+We use **category-level cost bands** from public industry benchmarks.
+Cost is calculated **per title**, not per category:
 
-| Content Type | Cost Band (per episode/unit, USD) | Source Basis | Tier |
-|---|---|---|---|
-| Anime | $100K–$300K per episode | Industry reports, Anime News Network | Tier 2 |
-| Drama (scripted series) | $500K–$2M per episode | Variety, industry benchmarks | Tier 2 |
-| Film | $5M–$30M per title | Press reporting, comparable estimates | Tier 3 |
-| Reality / Unscripted | $100K–$500K per episode | Industry benchmarks | Tier 3 |
+- **Series:** per_episode_mid × actual episode count
+- **Film:** per_title_mid
 
-**Mid-point values are used for efficiency calculations** with explicit acknowledgment
-that actual costs vary significantly by title.
+| Content Type | Per Episode/Title (USD) | Source |
+|---|---|---|
+| Anime | $100K–$300K / ep (mid: $200K) | Industry reports, Anime News Network |
+| Drama | $500K–$2M / ep (mid: $1M) | Variety, industry benchmarks |
+| Film | $5M–$30M / title (mid: $15M) | Press reporting |
+| Reality | $100K–$500K / ep (mid: $250K) | Industry benchmarks |
+
+**Sensitivity:** All metrics tested under low (min cost), base (mid), and
+high (max cost) assumptions. Rankings are stable across all three scenarios.
 
 ## Metric Definitions
 
-### Metric 1: Viewing Efficiency Index (VEI)
+### Viewing Efficiency Index (VEI)
 
-**Definition:** Total viewing hours / estimated cost proxy (category midpoint)
+**Definition:** Total viewing hours (M) / estimated cost proxy ($M)
 
-**Purpose:** Compare relative attention generation per cost unit across content types.
+**Calculation:** Per-title cost = per_episode_mid × episodes (or per_title_mid for films)
 
-**What it CAN show:** Which content types generate more viewing per estimated dollar.
+**Sensitivity:** VEI_low = hours / cost_high; VEI_high = hours / cost_low
 
-**What it CANNOT show:** True ROI, subscriber impact, or whether viewing translates
-to retention.
+**What it shows:** Relative viewing attention per estimated cost unit.
 
-### Metric 2: Export Value Indicator (EVI)
+**What it does NOT show:** True ROI, subscriber impact, retention value.
 
-**Definition:** Ratio of a title's global engagement prominence to its domestic
-(Japan) market positioning.
+### Export Value
 
-**Proxy approach:** Titles appearing in Netflix global Top 10 or Engagement Report
-with viewing patterns suggesting significant non-Japan audience are classified as
-having higher export value.
+**Definition:** Rule-based scoring on Global Top 10 presence:
+- High (3): 5+ weeks in Netflix Global Top 10
+- Moderate (2): 2-4 weeks
+- Low (1): <2 weeks
 
-**Categories:**
-- High export: Title appears prominently in global engagement data
-- Moderate export: Some global visibility, primarily Japan-focused
-- Low export: Predominantly domestic audience signal
+**Source:** Netflix weekly Global Top 10 data (public).
 
-### Metric 3: Portfolio Role Classification
+**What it shows:** Whether a title's engagement extends beyond domestic audience.
 
-Each content type is classified into a strategic role:
+**What it does NOT show:** Precise country-level viewership breakdown.
 
-| Role | Definition |
-|---|---|
-| Export Engine | High efficiency + high export value |
-| Local Anchor | Strong domestic relevance, limited export |
-| Dual-Strength | Both domestically and globally valuable |
-| Niche / Experimental | Lower scale, specific strategic purpose |
+### Portfolio Role Classification
+
+Derived from VEI × Export Value position:
+- **Export Engine:** High efficiency + high export
+- **Local Anchor:** Moderate efficiency, domestic-focused
+- **Selective / High-Variance:** Low average efficiency, outcome depends on individual titles
 
 ## Data Reliability Tiers
 
 | Tier | Label | Examples |
 |---|---|---|
-| 1 | Reported | Netflix Engagement Report viewing hours |
-| 2 | Market Estimate | Industry cost benchmarks, IMDb metadata |
-| 3 | Proxy Indicator | Export value classification, cost band estimates |
+| 1 | Reported | Netflix Engagement Report viewing hours, Global Top 10 weeks |
+| 2 | Market Estimate | IMDb ratings, industry cost benchmarks |
+| 3 | Proxy Indicator | Cost band estimates for specific content types |
+
+## What This Data Cannot Tell Us
+
+- Netflix's actual production budgets
+- Subscriber acquisition or retention impact per title
+- Country-level viewing distribution
+- Marketing spend or promotional impact
+- Whether a title was supply-constrained or demand-constrained

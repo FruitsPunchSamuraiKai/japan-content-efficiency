@@ -231,6 +231,45 @@ with tab2:
         "significantly by title."
     )
 
+    # Sensitivity analysis
+    st.subheader("Sensitivity Analysis — Do Rankings Hold?")
+    st.markdown("Viewing efficiency tested under low, base, and high cost assumptions:")
+
+    sens_data = []
+    for _, row in df_summary.iterrows():
+        sens_data.append({
+            "Content Type": TYPE_LABELS[row["content_type"]],
+            "VEI (Low Cost)": f"{row['avg_efficiency_high']:.0f}",
+            "VEI (Base Case)": f"{row['avg_efficiency']:.0f}",
+            "VEI (High Cost)": f"{row['avg_efficiency_low']:.0f}",
+            "Rank Stable?": "Yes" if row["avg_efficiency_high"] > 0 else "N/A",
+        })
+    # Sort by base case efficiency
+    sens_df = pd.DataFrame(sens_data)
+    st.dataframe(sens_df, use_container_width=True, hide_index=True)
+
+    # Check if ranking is stable
+    rankings_base = df_summary.sort_values("avg_efficiency", ascending=False)["content_type"].tolist()
+    rankings_low = df_summary.sort_values("avg_efficiency_high", ascending=False)["content_type"].tolist()
+    rankings_high = df_summary.sort_values("avg_efficiency_low", ascending=False)["content_type"].tolist()
+
+    if rankings_base == rankings_low == rankings_high:
+        st.success("Rankings are consistent across all cost scenarios: " +
+                   " > ".join(TYPE_LABELS[t] for t in rankings_base))
+    else:
+        st.warning("Rankings vary under different cost assumptions — interpret with caution.")
+
+    # Source / Notes table
+    st.subheader("Title Source Table")
+    source_cols = ["title", "content_type", "episodes", "viewing_hours_M",
+                   "global_top10_weeks", "engagement_period", "source"]
+    source_display = df_titles[source_cols].rename(columns={
+        "title": "Title", "content_type": "Type", "episodes": "Eps",
+        "viewing_hours_M": "Hours (M)", "global_top10_weeks": "Top10 Wks",
+        "engagement_period": "Period", "source": "Source",
+    })
+    st.dataframe(source_display, use_container_width=True, hide_index=True)
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # TAB 3: EXPORT VALUE & REACH
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -279,25 +318,29 @@ with tab3:
     )
     st.plotly_chart(fig_quad, use_container_width=True)
 
-    # Export breakdown by type
-    st.subheader("Export Signal Distribution by Content Type")
+    # Export breakdown by type — rule-based on global_top10_weeks
+    st.subheader("Export Value Distribution by Content Type")
 
-    export_counts = df_titles.groupby(["content_type", "export_signal"]).size().reset_index(name="count")
-    export_order = {"high": 3, "moderate": 2, "low": 1}
-    export_counts["sort"] = export_counts["export_signal"].map(export_order)
+    export_label_map = {3: "High (5+ weeks)", 2: "Moderate (2-4 weeks)", 1: "Low (<2 weeks)"}
+    df_titles["export_label"] = df_titles["export_value_numeric"].map(export_label_map)
+
+    export_counts = df_titles.groupby(["content_type", "export_label"]).size().reset_index(name="count")
+    export_order = {"High (5+ weeks)": 3, "Moderate (2-4 weeks)": 2, "Low (<2 weeks)": 1}
+    export_counts["sort"] = export_counts["export_label"].map(export_order)
     export_counts = export_counts.sort_values("sort")
 
     fig_export = px.bar(
         export_counts,
         x=export_counts["content_type"].map(TYPE_LABELS),
         y="count",
-        color="export_signal",
-        color_discrete_map={"high": "#2ca02c", "moderate": "#f58518", "low": "#d62728"},
+        color="export_label",
+        color_discrete_map={"High (5+ weeks)": "#2ca02c", "Moderate (2-4 weeks)": "#f58518", "Low (<2 weeks)": "#d62728"},
         barmode="stack",
-        labels={"x": "", "count": "Number of Titles", "export_signal": "Export Signal"},
+        labels={"x": "", "count": "Number of Titles", "export_label": "Export Value"},
     )
     fig_export.update_layout(height=350)
     st.plotly_chart(fig_export, use_container_width=True)
+    st.caption("Export value scored by weeks in Netflix Global Top 10: High (5+), Moderate (2-4), Low (<2).")
 
     # Comparison table
     st.subheader("Content Type Export Profile")

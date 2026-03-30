@@ -18,9 +18,11 @@ build a transparent discussion framework even without internal financial data.
 ## 2. Scope
 
 - **Market:** Japan only
-- **Content types:** Anime, Drama, Film, Reality/Unscripted
+- **Sample:** 21 titles, all Japan-produced and Japanese-language
+- **Inclusion criteria:** Primary production country Japan, primary language Japanese, appeared in Netflix public engagement data
+- **Content types:** Anime (7), Drama (6), Film (3), Reality/Unscripted (5)
 - **Metrics:** Viewing efficiency, export value, portfolio role
-- **NOT in scope:** Exact ROI, title-level budgets, subscriber impact, APAC expansion
+- **NOT in scope:** Exact ROI, title-level budgets, subscriber impact, non-Japanese titles
 
 ## 3. Data Sources
 
@@ -37,16 +39,16 @@ Engagement Report used was published January 20, 2026, covering July–December 
 ## 4. Approach
 
 Three analytical lenses, not one simplistic metric:
-1. **Viewing Efficiency** — viewing hours relative to category-level cost proxy
-2. **Export Value** — how much a title's engagement appears to come from beyond Japan
-3. **Portfolio Role** — what strategic function each content type serves
+1. **Viewing Efficiency** — viewing hours / estimated cost (per-episode × episode count, not flat category). Tested under low, base, and high cost assumptions.
+2. **Export Value** — rule-based scoring on weeks in Netflix Global Top 10: High (5+), Moderate (2-4), Low (<2). Not manual judgment.
+3. **Portfolio Role** — strategic classification derived from efficiency × export value position
 
 ## 5. Key Findings
 
-- Anime appears strongest on both viewing efficiency and export value
-- Japanese drama plays a balanced local relevance role with moderate export potential
-- Film shows high variability — breakout hits vs. limited-reach titles
-- Reality/unscripted is domestically concentrated with lower cost but limited export
+- Anime appears strongest on both viewing efficiency and export value (rankings hold under all cost scenarios)
+- Japanese drama serves a local anchor function; export depends heavily on title selection
+- Film shows high variability — franchise IP exports well, original films stay domestic
+- Reality/unscripted fills domestic catalog needs at low cost but has limited global reach
 
 ## 6. Deliverables
 

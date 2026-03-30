@@ -416,7 +416,7 @@ def build_content_type_summary(df: pd.DataFrame) -> pd.DataFrame:
         avg_efficiency_high=("viewing_efficiency_high", "mean"),
         avg_export_value=("export_value_numeric", "mean"),
         avg_imdb=("imdb_rating", "mean"),
-        avg_cost_M=("cost_proxy_M", "first"),
+        avg_cost_M=("cost_proxy_M", "mean"),
     ).reset_index()
 
     def classify_role(row):
