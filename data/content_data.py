@@ -17,9 +17,7 @@ Data vintage:
 - Cost proxies: Industry benchmarks (category-level, not title-level)
 """
 
-import re
 import pandas as pd
-import numpy as np
 
 # ── Cost Proxy Bands (USD) ───────────────────────────────────────────────────
 # Category-level estimates from public industry reporting
