@@ -242,9 +242,7 @@ with tab2:
             "VEI (Low Cost)": f"{row['avg_efficiency_high']:.0f}",
             "VEI (Base Case)": f"{row['avg_efficiency']:.0f}",
             "VEI (High Cost)": f"{row['avg_efficiency_low']:.0f}",
-            "Rank Stable?": "Yes" if row["avg_efficiency_high"] > 0 else "N/A",
         })
-    # Sort by base case efficiency
     sens_df = pd.DataFrame(sens_data)
     st.dataframe(sens_df, use_container_width=True, hide_index=True)
 
