@@ -177,14 +177,14 @@ with tab2:
 
     fig_titles = px.scatter(
         df_titles,
-        x="cost_proxy_per_season_M",
+        x="cost_proxy_M",
         y="viewing_hours_M",
         color="content_type",
         color_discrete_map=TYPE_COLORS,
         text="title",
         size=[15] * len(df_titles),
         labels={
-            "cost_proxy_per_season_M": "Cost Proxy per Season ($M)",
+            "cost_proxy_M": "Cost Proxy per Season ($M)",
             "viewing_hours_M": "Viewing Hours (M)",
             "content_type": "Content Type",
         },
@@ -220,7 +220,7 @@ with tab2:
             "Content Type": TYPE_LABELS.get(ctype, ctype),
             "Cost Band (per ep/title)": f"${proxy.get('per_episode_low', proxy.get('per_title_low', 0)):,.0f} – ${proxy.get('per_episode_high', proxy.get('per_title_high', 0)):,.0f}",
             "Midpoint Used": f"${proxy.get('per_episode_mid', proxy.get('per_title_mid', 0)):,.0f}",
-            "Typical Season Cost": f"${proxy['cost_per_season_mid']:,.0f}",
+            "Note": "Per title × episodes for series" if ctype != "film" else "Per title",
             "Source": proxy["source"],
         })
     st.dataframe(pd.DataFrame(cost_data), use_container_width=True, hide_index=True)
