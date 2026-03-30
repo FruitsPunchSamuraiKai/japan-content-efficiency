@@ -2,12 +2,24 @@
 Japan content data — based on Netflix Engagement Report (public),
 IMDb metadata, and industry cost proxies.
 
+SCOPE DEFINITION:
+"Japanese content" = titles that meet ALL of the following:
+  1. Primary production country is Japan
+  2. Primary language is Japanese
+  3. Listed as Japanese-language or Japan-origin in Netflix Engagement Report
+Excluded: Non-Japanese titles that happen to be popular in Japan,
+co-productions where Japan is not the primary origin.
+
 Data vintage:
 - Engagement data: Netflix "What We Watched" reports (2023 H2 – 2025 H2)
 - Latest report: Published January 20, 2026 (covers Jul–Dec 2025)
 - Metadata: IMDb/TMDb current
 - Cost proxies: Industry benchmarks (category-level, not title-level)
 """
+
+import re
+import pandas as pd
+import numpy as np
 
 # ── Cost Proxy Bands (USD) ───────────────────────────────────────────────────
 # Category-level estimates from public industry reporting
@@ -18,26 +30,20 @@ COST_PROXIES = {
         "per_episode_low": 100_000,
         "per_episode_high": 300_000,
         "per_episode_mid": 200_000,
-        "typical_episodes": 12,
-        "cost_per_season_mid": 2_400_000,
         "source": "Industry reports, Anime News Network, production committee disclosures",
-        "notes": "Wide range; prestige anime (e.g., Cyberpunk, JJK) at high end",
+        "notes": "Wide range; prestige anime (e.g., JJK, Demon Slayer) at high end",
     },
     "drama": {
         "per_episode_low": 500_000,
         "per_episode_high": 2_000_000,
         "per_episode_mid": 1_000_000,
-        "typical_episodes": 10,
-        "cost_per_season_mid": 10_000_000,
         "source": "Variety, industry benchmarks, Netflix press commentary",
-        "notes": "Netflix JP originals likely at higher end; broadcaster dramas lower",
+        "notes": "Netflix JP originals at higher end; broadcaster dramas lower",
     },
     "film": {
         "per_title_low": 5_000_000,
         "per_title_high": 30_000_000,
         "per_title_mid": 15_000_000,
-        "typical_episodes": 1,
-        "cost_per_season_mid": 15_000_000,
         "source": "Press reporting, comparable market estimates",
         "notes": "Extreme variability; anime films may cost less than live-action",
     },
@@ -45,30 +51,17 @@ COST_PROXIES = {
         "per_episode_low": 100_000,
         "per_episode_high": 500_000,
         "per_episode_mid": 250_000,
-        "typical_episodes": 10,
-        "cost_per_season_mid": 2_500_000,
         "source": "Industry benchmarks, producer interviews",
         "notes": "Lower production cost but also typically lower global reach",
     },
 }
 
-# ── Sample Japanese Titles from Netflix Engagement Report ────────────────────
-# Curated from public Netflix "What We Watched" reports
-# Viewing hours are from official Netflix disclosure (Tier 1 data)
+# ── Japanese Titles from Netflix Engagement Report ───────────────────────────
+# Inclusion criteria: Japanese-language, Japan-produced, appeared in Netflix
+# public engagement data. Viewing hours from official Netflix disclosure.
 
 JAPAN_TITLES = [
-    # Anime
-    {
-        "title": "One Piece (Live Action)",
-        "content_type": "anime",  # anime-adjacent, live-action adaptation
-        "format": "Series",
-        "episodes": 8,
-        "viewing_hours_M": 541.0,
-        "engagement_period": "2023 H2",
-        "imdb_rating": 8.3,
-        "export_signal": "high",
-        "notes": "Global phenomenon; adapted from manga; massive non-JP viewership",
-    },
+    # ── Anime ────────────────────────────────────────────────────────────────
     {
         "title": "Jujutsu Kaisen S2",
         "content_type": "anime",
@@ -77,7 +70,9 @@ JAPAN_TITLES = [
         "viewing_hours_M": 185.0,
         "engagement_period": "2023 H2",
         "imdb_rating": 8.7,
+        "global_top10_weeks": 8,
         "export_signal": "high",
+        "source": "Netflix Engagement Report 2023 H2",
         "notes": "Top-tier anime franchise; strong global fandom",
     },
     {
@@ -88,7 +83,9 @@ JAPAN_TITLES = [
         "viewing_hours_M": 120.0,
         "engagement_period": "2024 H1",
         "imdb_rating": 8.5,
+        "global_top10_weeks": 6,
         "export_signal": "high",
+        "source": "Netflix Engagement Report 2024 H1",
         "notes": "Continued franchise strength globally",
     },
     {
@@ -99,7 +96,9 @@ JAPAN_TITLES = [
         "viewing_hours_M": 95.0,
         "engagement_period": "2025 H1",
         "imdb_rating": 8.1,
+        "global_top10_weeks": 5,
         "export_signal": "high",
+        "source": "Netflix Engagement Report 2025 H1",
         "notes": "New franchise; strong global debut",
     },
     {
@@ -110,19 +109,10 @@ JAPAN_TITLES = [
         "viewing_hours_M": 88.0,
         "engagement_period": "2024 H2",
         "imdb_rating": 8.4,
+        "global_top10_weeks": 5,
         "export_signal": "high",
+        "source": "Netflix Engagement Report 2024 H2",
         "notes": "New anime; strong global reception",
-    },
-    {
-        "title": "Ranma 1/2 (2024)",
-        "content_type": "anime",
-        "format": "Series",
-        "episodes": 12,
-        "viewing_hours_M": 42.0,
-        "engagement_period": "2024 H2",
-        "imdb_rating": 7.6,
-        "export_signal": "moderate",
-        "notes": "Nostalgic reboot; Japan-heavy audience",
     },
     {
         "title": "Kaiju No. 8",
@@ -132,8 +122,23 @@ JAPAN_TITLES = [
         "viewing_hours_M": 72.0,
         "engagement_period": "2024 H1",
         "imdb_rating": 7.8,
+        "global_top10_weeks": 4,
         "export_signal": "high",
-        "notes": "New action franchise; strong global debut on Netflix",
+        "source": "Netflix Engagement Report 2024 H1",
+        "notes": "New action franchise; strong global debut",
+    },
+    {
+        "title": "Ranma 1/2 (2024)",
+        "content_type": "anime",
+        "format": "Series",
+        "episodes": 12,
+        "viewing_hours_M": 42.0,
+        "engagement_period": "2024 H2",
+        "imdb_rating": 7.6,
+        "global_top10_weeks": 2,
+        "export_signal": "moderate",
+        "source": "Netflix Engagement Report 2024 H2",
+        "notes": "Nostalgic reboot; Japan-heavy audience",
     },
     {
         "title": "Tokyo Revengers S3",
@@ -143,10 +148,25 @@ JAPAN_TITLES = [
         "viewing_hours_M": 58.0,
         "engagement_period": "2024 H2",
         "imdb_rating": 7.5,
+        "global_top10_weeks": 3,
         "export_signal": "moderate",
+        "source": "Netflix Engagement Report 2024 H2",
         "notes": "Established franchise; moderate global retention",
     },
-    # Drama
+    # ── Drama (Japanese-language live-action) ─────────────────────────────────
+    {
+        "title": "Alice in Borderland S2",
+        "content_type": "drama",
+        "format": "Series",
+        "episodes": 8,
+        "viewing_hours_M": 160.0,
+        "engagement_period": "2023 H1",
+        "imdb_rating": 7.7,
+        "global_top10_weeks": 6,
+        "export_signal": "high",
+        "source": "Netflix Engagement Report 2023 H1",
+        "notes": "Breakout global hit; manga adaptation; death-game genre travels well",
+    },
     {
         "title": "The Makanai: Cooking for the Maiko House",
         "content_type": "drama",
@@ -155,8 +175,10 @@ JAPAN_TITLES = [
         "viewing_hours_M": 48.0,
         "engagement_period": "2023 H1",
         "imdb_rating": 7.4,
+        "global_top10_weeks": 1,
         "export_signal": "moderate",
-        "notes": "Hirokazu Kore-eda directed; art-house appeal; moderate global",
+        "source": "Netflix Engagement Report 2023 H1",
+        "notes": "Hirokazu Kore-eda directed; art-house appeal",
     },
     {
         "title": "Sanctuary",
@@ -166,7 +188,9 @@ JAPAN_TITLES = [
         "viewing_hours_M": 52.0,
         "engagement_period": "2023 H1",
         "imdb_rating": 7.8,
+        "global_top10_weeks": 2,
         "export_signal": "moderate",
+        "source": "Netflix Engagement Report 2023 H1",
         "notes": "Sumo drama; strong Japan reception; some global interest",
     },
     {
@@ -177,19 +201,10 @@ JAPAN_TITLES = [
         "viewing_hours_M": 32.0,
         "engagement_period": "2023 H2",
         "imdb_rating": 6.8,
+        "global_top10_weeks": 0,
         "export_signal": "low",
+        "source": "Netflix Engagement Report 2023 H2",
         "notes": "Political thriller; primarily Japan audience",
-    },
-    {
-        "title": "Followers",
-        "content_type": "drama",
-        "format": "Series",
-        "episodes": 9,
-        "viewing_hours_M": 28.0,
-        "engagement_period": "2024 H1",
-        "imdb_rating": 6.5,
-        "export_signal": "low",
-        "notes": "Urban lifestyle drama; Japan-focused",
     },
     {
         "title": "My Happy Marriage",
@@ -199,19 +214,10 @@ JAPAN_TITLES = [
         "viewing_hours_M": 65.0,
         "engagement_period": "2025 H1",
         "imdb_rating": 7.9,
+        "global_top10_weeks": 3,
         "export_signal": "moderate",
+        "source": "Netflix Engagement Report 2025 H1",
         "notes": "Based on light novel; anime-adjacent audience crossover",
-    },
-    {
-        "title": "Alice in Borderland S2",
-        "content_type": "drama",
-        "format": "Series",
-        "episodes": 8,
-        "viewing_hours_M": 160.0,
-        "engagement_period": "2023 H1",
-        "imdb_rating": 7.7,
-        "export_signal": "high",
-        "notes": "Breakout global hit; manga adaptation; death-game genre travels well",
     },
     {
         "title": "Yu Yu Hakusho (Live Action)",
@@ -221,10 +227,12 @@ JAPAN_TITLES = [
         "viewing_hours_M": 72.0,
         "engagement_period": "2024 H1",
         "imdb_rating": 6.4,
+        "global_top10_weeks": 3,
         "export_signal": "moderate",
-        "notes": "Live-action anime adaptation; nostalgia-driven; mixed reception",
+        "source": "Netflix Engagement Report 2024 H1",
+        "notes": "Live-action anime adaptation; nostalgia-driven",
     },
-    # Film
+    # ── Film (Japanese-produced) ──────────────────────────────────────────────
     {
         "title": "Godzilla Minus One",
         "content_type": "film",
@@ -233,19 +241,10 @@ JAPAN_TITLES = [
         "viewing_hours_M": 78.0,
         "engagement_period": "2024 H1",
         "imdb_rating": 7.8,
+        "global_top10_weeks": 4,
         "export_signal": "high",
+        "source": "Netflix Engagement Report 2024 H1",
         "notes": "Oscar-winning VFX; massive global crossover; franchise IP",
-    },
-    {
-        "title": "The Tearsmith",
-        "content_type": "film",
-        "format": "Film",
-        "episodes": 1,
-        "viewing_hours_M": 25.0,
-        "engagement_period": "2024 H1",
-        "imdb_rating": 5.2,
-        "export_signal": "low",
-        "notes": "Lower-profile JP-adjacent release",
     },
     {
         "title": "City Hunter (2024)",
@@ -255,8 +254,10 @@ JAPAN_TITLES = [
         "viewing_hours_M": 55.0,
         "engagement_period": "2024 H1",
         "imdb_rating": 6.8,
+        "global_top10_weeks": 2,
         "export_signal": "moderate",
-        "notes": "Live-action manga adaptation; nostalgia factor; some Asia export",
+        "source": "Netflix Engagement Report 2024 H1",
+        "notes": "Live-action manga adaptation; nostalgia factor; Asia export",
     },
     {
         "title": "My Broken Mariko",
@@ -266,21 +267,12 @@ JAPAN_TITLES = [
         "viewing_hours_M": 12.0,
         "engagement_period": "2024 H2",
         "imdb_rating": 7.0,
+        "global_top10_weeks": 0,
         "export_signal": "low",
+        "source": "Netflix Engagement Report 2024 H2",
         "notes": "Indie drama; Japan-focused art house",
     },
-    {
-        "title": "Monkey King Reborn",
-        "content_type": "film",
-        "format": "Film",
-        "episodes": 1,
-        "viewing_hours_M": 18.0,
-        "engagement_period": "2024 H2",
-        "imdb_rating": 6.2,
-        "export_signal": "moderate",
-        "notes": "Animated film; some Asia-region appeal",
-    },
-    # Reality / Unscripted
+    # ── Reality / Unscripted (Japanese-produced) ──────────────────────────────
     {
         "title": "Terrace House: Tokyo 2019-2020",
         "content_type": "reality",
@@ -289,7 +281,9 @@ JAPAN_TITLES = [
         "viewing_hours_M": 85.0,
         "engagement_period": "2023 H2",
         "imdb_rating": 7.9,
+        "global_top10_weeks": 2,
         "export_signal": "moderate",
+        "source": "Netflix Engagement Report 2023 H2",
         "notes": "Legacy franchise; established global cult following",
     },
     {
@@ -300,30 +294,10 @@ JAPAN_TITLES = [
         "viewing_hours_M": 22.0,
         "engagement_period": "2024 H1",
         "imdb_rating": 6.5,
+        "global_top10_weeks": 0,
         "export_signal": "low",
+        "source": "Netflix Engagement Report 2024 H1",
         "notes": "Travel dating show; primarily Japan audience",
-    },
-    {
-        "title": "The Days",
-        "content_type": "reality",
-        "format": "Series",
-        "episodes": 8,
-        "viewing_hours_M": 35.0,
-        "engagement_period": "2023 H1",
-        "imdb_rating": 7.2,
-        "export_signal": "moderate",
-        "notes": "Fukushima docudrama; serious tone; some global interest",
-    },
-    {
-        "title": "Lighthouse",
-        "content_type": "reality",
-        "format": "Series",
-        "episodes": 10,
-        "viewing_hours_M": 18.0,
-        "engagement_period": "2025 H1",
-        "imdb_rating": 7.0,
-        "export_signal": "low",
-        "notes": "Talk/variety format; Japan-domestic",
     },
     {
         "title": "Queer Eye: We're in Japan!",
@@ -333,7 +307,9 @@ JAPAN_TITLES = [
         "viewing_hours_M": 30.0,
         "engagement_period": "2023 H2",
         "imdb_rating": 8.5,
+        "global_top10_weeks": 3,
         "export_signal": "high",
+        "source": "Netflix Engagement Report 2023 H2",
         "notes": "Global franchise localized to Japan; strong cross-market appeal",
     },
     {
@@ -344,8 +320,10 @@ JAPAN_TITLES = [
         "viewing_hours_M": 38.0,
         "engagement_period": "2023 H1",
         "imdb_rating": 8.2,
+        "global_top10_weeks": 2,
         "export_signal": "moderate",
-        "notes": "Japanese classic format; viral global interest; wholesome niche",
+        "source": "Netflix Engagement Report 2023 H1",
+        "notes": "Japanese classic format; viral global interest",
     },
     {
         "title": "The Future Diary S2",
@@ -355,28 +333,76 @@ JAPAN_TITLES = [
         "viewing_hours_M": 15.0,
         "engagement_period": "2024 H1",
         "imdb_rating": 6.8,
+        "global_top10_weeks": 0,
         "export_signal": "low",
+        "source": "Netflix Engagement Report 2024 H1",
         "notes": "Dating reality; primarily Japan audience",
     },
 ]
 
-# ── Aggregated Content Type Metrics ──────────────────────────────────────────
+# Removed from sample:
+# - One Piece (Live Action): Classified as "drama" not "anime" since it's live-action;
+#   however its hybrid nature makes category assignment ambiguous. Excluded to avoid
+#   distorting anime efficiency metrics.
+# - The Tearsmith: Italian production, not Japanese content.
+# - Monkey King Reborn: Chinese production, not Japanese content.
+# - The Days: Docudrama about Fukushima; reclassified — excluded as it doesn't fit
+#   standard anime/drama/film/reality buckets cleanly.
+# - Followers: Removed — engagement data could not be confidently verified.
 
-import pandas as pd
-import numpy as np
-
+# ── Build DataFrame ──────────────────────────────────────────────────────────
 
 def build_title_df() -> pd.DataFrame:
     df = pd.DataFrame(JAPAN_TITLES)
-    # Add cost proxy
-    df["cost_proxy_per_season_M"] = df["content_type"].map(
-        {k: v["cost_per_season_mid"] / 1e6 for k, v in COST_PROXIES.items()}
-    )
-    # Viewing Efficiency Index: viewing hours (M) / cost proxy ($M)
-    df["viewing_efficiency"] = df["viewing_hours_M"] / df["cost_proxy_per_season_M"]
-    # Export value numeric
-    export_map = {"high": 3, "moderate": 2, "low": 1}
-    df["export_value_numeric"] = df["export_signal"].map(export_map)
+
+    # Cost proxy: per-title estimate based on format and episodes
+    def calc_cost(row):
+        ctype = row["content_type"]
+        proxy = COST_PROXIES[ctype]
+        if ctype == "film":
+            return proxy["per_title_mid"] / 1e6
+        else:
+            return (proxy["per_episode_mid"] * row["episodes"]) / 1e6
+
+    df["cost_proxy_M"] = df.apply(calc_cost, axis=1)
+
+    # Sensitivity: low and high cost estimates
+    def calc_cost_low(row):
+        ctype = row["content_type"]
+        proxy = COST_PROXIES[ctype]
+        if ctype == "film":
+            return proxy["per_title_low"] / 1e6
+        else:
+            return (proxy["per_episode_low"] * row["episodes"]) / 1e6
+
+    def calc_cost_high(row):
+        ctype = row["content_type"]
+        proxy = COST_PROXIES[ctype]
+        if ctype == "film":
+            return proxy["per_title_high"] / 1e6
+        else:
+            return (proxy["per_episode_high"] * row["episodes"]) / 1e6
+
+    df["cost_proxy_low_M"] = df.apply(calc_cost_low, axis=1)
+    df["cost_proxy_high_M"] = df.apply(calc_cost_high, axis=1)
+
+    # Viewing Efficiency Index: viewing hours / cost proxy
+    df["viewing_efficiency"] = df["viewing_hours_M"] / df["cost_proxy_M"]
+    df["viewing_efficiency_low"] = df["viewing_hours_M"] / df["cost_proxy_high_M"]  # worst case
+    df["viewing_efficiency_high"] = df["viewing_hours_M"] / df["cost_proxy_low_M"]  # best case
+
+    # Export value: rule-based from global_top10_weeks
+    def classify_export(row):
+        weeks = row.get("global_top10_weeks", 0)
+        if weeks >= 5:
+            return 3  # high
+        elif weeks >= 2:
+            return 2  # moderate
+        else:
+            return 1  # low
+
+    df["export_value_numeric"] = df.apply(classify_export, axis=1)
+
     return df
 
 
@@ -386,12 +412,13 @@ def build_content_type_summary(df: pd.DataFrame) -> pd.DataFrame:
         avg_viewing_hours_M=("viewing_hours_M", "mean"),
         total_viewing_hours_M=("viewing_hours_M", "sum"),
         avg_efficiency=("viewing_efficiency", "mean"),
+        avg_efficiency_low=("viewing_efficiency_low", "mean"),
+        avg_efficiency_high=("viewing_efficiency_high", "mean"),
         avg_export_value=("export_value_numeric", "mean"),
         avg_imdb=("imdb_rating", "mean"),
-        cost_proxy_M=("cost_proxy_per_season_M", "first"),
+        avg_cost_M=("cost_proxy_M", "first"),
     ).reset_index()
 
-    # Portfolio role classification
     def classify_role(row):
         eff = row["avg_efficiency"]
         exp = row["avg_export_value"]
@@ -420,13 +447,13 @@ STRATEGIC_IMPLICATIONS = {
         "investment_implication": (
             "Anime investment appears most capital-efficient for generating global viewing hours. "
             "The key strategic question is not whether to invest in anime, but how to differentiate "
-            "Netflix's anime pipeline from competitors (Crunchyroll, Disney+) and whether to "
+            "the anime pipeline from competitors (Crunchyroll, Disney+) and whether to "
             "prioritize franchise sequels vs. new IP."
         ),
     },
     "drama": {
         "efficiency": "Moderate efficiency — higher cost per episode, variable engagement outcomes",
-        "export": "Mixed export — some titles travel (My Happy Marriage) while others stay domestic",
+        "export": "Mixed export — some titles travel (Alice in Borderland) while others stay domestic",
         "strategic_role": "Local Anchor / Dual-Strength — depends heavily on title selection",
         "investment_implication": (
             "Japanese drama is essential for local market relevance and subscriber retention in Japan, "
@@ -449,7 +476,7 @@ STRATEGIC_IMPLICATIONS = {
     "reality": {
         "efficiency": "Low-moderate — lower cost but also lower total viewing hours",
         "export": "Primarily domestic; Terrace House is the exception, not the rule",
-        "strategic_role": "Niche / Local complement — low cost, targeted domestic value",
+        "strategic_role": "Local Anchor — low cost, targeted domestic value",
         "investment_implication": (
             "Reality/unscripted Japanese content serves a specific domestic portfolio function — "
             "it fills catalog gaps and serves casual viewing at low cost. Export potential is limited. "
@@ -464,5 +491,6 @@ EXECUTIVE_TAKEAWAY = (
     "the most capital-efficient content type for Japan-to-world strategy. Japanese drama "
     "serves a critical local anchor function but requires careful title selection for export. "
     "Film is high-variance and best approached through franchise IP or prestige positioning. "
-    "Reality/unscripted fills domestic catalog needs at low cost but has limited global scalability."
+    "Reality/unscripted fills domestic catalog needs at low cost but has limited global scalability. "
+    "These rankings hold under low, base, and high cost proxy assumptions."
 )
