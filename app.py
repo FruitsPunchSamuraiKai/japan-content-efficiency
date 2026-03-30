@@ -175,6 +175,7 @@ with tab2:
     st.subheader("Title-Level Efficiency Matrix")
     st.markdown("Each point is a title. Position shows cost proxy vs viewing hours.")
 
+    df_titles["_marker_size"] = 15
     fig_titles = px.scatter(
         df_titles,
         x="cost_proxy_M",
@@ -182,9 +183,10 @@ with tab2:
         color="content_type",
         color_discrete_map=TYPE_COLORS,
         text="title",
-        size=[15] * len(df_titles),
+        size="_marker_size",
+        size_max=15,
         labels={
-            "cost_proxy_M": "Cost Proxy per Season ($M)",
+            "cost_proxy_M": "Cost Proxy ($M)",
             "viewing_hours_M": "Viewing Hours (M)",
             "content_type": "Content Type",
         },
